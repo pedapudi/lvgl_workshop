@@ -18,11 +18,11 @@ class WorkshopUI {
  private:
   void setup_hummingbird(lvgl::Object& parent);
   void setup_raccoon(lvgl::Object& parent);
+  void setup_whale(lvgl::Object& parent);
 
-  enum class Animal { Hummingbird, Raccoon };
+  enum class Animal { Hummingbird, Raccoon, Whale };
 
   Animal current_animal_ = Animal::Hummingbird;
   std::unique_ptr<lvgl::Object> screen_;
-  std::unique_ptr<lvgl::Object> container_;
   std::unique_ptr<lvgl::Image> current_image_;
 };

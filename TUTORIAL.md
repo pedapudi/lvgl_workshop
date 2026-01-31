@@ -2,7 +2,7 @@
 
 Welcome to the Animation Workshop! This tutorial will walk you through the process of taking a basic SVG animation and optimizing it for the ESP32-S3 and XIAO Round Display, moving from a stuttering **7 FPS** to a fluid **26 FPS**.
 
-In this workshop, you will implement an application that renders and animates two vector assets: a **Hummingbird** and a **Raccoon**. You'll learn how to handle complex SVG rendering on resource-constrained hardware by navigating through four progressive optimization phases.
+In this workshop, you will implement an application that renders and animates three vector assets: a **Hummingbird**, a **Raccoon**, and a **Whale**. You'll learn how to handle complex SVG rendering on resource-constrained hardware by navigating through four progressive optimization phases.
 
 ### 🌐 The ecosystem
 This project leverages a powerful open-source stack designed for high-performance embedded graphics:

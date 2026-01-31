@@ -1,0 +1,105 @@
+#pragma once
+
+static const char* whale_svg =
+    R"whale_svg(<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- 
+        Animated Blue Whale (100x100)
+        - Body swims (Translate Y)
+        - Tail flaps (Rotate)
+        - Side fin paddles (Rotate)
+        - Water spout sprays (Path Morph/Opacity)
+        - Water bubbles rising
+    -->
+
+    <!-- Background Bubble (Ambient) -->
+    <circle cx="80" cy="80" r="2" fill="#B3E5FC" opacity="0.6">
+        <animate attributeName="cy" values="80; 60" dur="3s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.6; 0" dur="3s" repeatCount="indefinite" />
+    </circle>
+
+    <!-- Main Whale Group -->
+    <g>
+        <!-- Swimming Motion: Gentle bobbing up and down -->
+        <animateTransform 
+            attributeName="transform" 
+            type="translate" 
+            values="0 2; 0 -2; 0 2" 
+            dur="4s" 
+            repeatCount="indefinite" 
+            calcMode="spline" 
+            keyTimes="0;0.5;1" 
+            keySplines="0.45 0 0.55 1; 0.45 0 0.55 1" 
+        />
+
+        <!-- Tail Group (Positioned at the back of the body) -->
+        <g transform="translate(70, 50)">
+            <!-- Tail Animation: Flaps up and down -->
+            <animateTransform 
+                attributeName="transform" 
+                type="rotate" 
+                values="-8 0 0; 8 0 0; -8 0 0" 
+                dur="2s" 
+                repeatCount="indefinite" 
+                calcMode="spline" 
+                keyTimes="0;0.5;1" 
+                keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
+            />
+            <!-- Tail Flukes -->
+            <path d="M0 0 C 8 -8 15 -12 20 -8 C 22 -6 20 0 15 0 C 20 0 22 6 20 8 C 15 12 8 8 0 0 Z" fill="#1565C0" />
+        </g>
+
+        <!-- Main Body Shape -->
+        <path d="M70 50 C 70 65 50 70 30 70 C 15 70 10 60 10 50 C 10 35 25 30 40 30 C 60 30 70 40 70 50 Z" fill="#1976D2" />
+        
+        <!-- Belly Details (Lighter underbelly with grooves) -->
+        <path d="M30 70 C 20 70 15 65 15 60 L 60 60 C 65 65 50 70 30 70 Z" fill="#64B5F6" opacity="0.6" />
+        <!-- Belly Lines -->
+        <path d="M25 60 L 25 70" stroke="#0D47A1" stroke-width="0.5" opacity="0.2"/>
+        <path d="M35 60 L 35 70" stroke="#0D47A1" stroke-width="0.5" opacity="0.2"/>
+        <path d="M45 60 L 45 69" stroke="#0D47A1" stroke-width="0.5" opacity="0.2"/>
+
+        <!-- Side Fin -->
+        <g transform="translate(45, 55)">
+            <path d="M0 0 C 0 0 5 10 -5 10 C -10 10 -5 0 0 0 Z" fill="#1565C0">
+                <!-- Fin paddling animation -->
+                <animateTransform 
+                    attributeName="transform" 
+                    type="rotate" 
+                    values="0 0 0; 20 0 0; 0 0 0" 
+                    dur="2s" 
+                    repeatCount="indefinite" 
+                    begin="0.5s"
+                    calcMode="spline" 
+                    keyTimes="0;0.5;1" 
+                    keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
+                />
+            </path>
+        </g>
+
+        <!-- Eye -->
+        <circle cx="25" cy="48" r="1.5" fill="#0D47A1" />
+        <circle cx="25.5" cy="47.5" r="0.5" fill="white" />
+
+        <!-- Smile -->
+        <path d="M28 52 Q 32 54 36 52" stroke="#0D47A1" stroke-width="1" stroke-linecap="round" fill="none" />
+
+        <!-- Water Spout (Spray Animation) -->
+        <g transform="translate(35, 30)">
+            <!-- Left Drop -->
+            <path d="M0 0 Q -5 -10 -10 -15" stroke="#B3E5FC" stroke-width="1.5" stroke-linecap="round" opacity="0">
+                 <animate attributeName="d" values="M0 0 Q -2 -2 -2 -2; M0 0 Q -5 -10 -10 -15" dur="2s" repeatCount="indefinite" />
+                 <animate attributeName="opacity" values="1; 0" dur="2s" repeatCount="indefinite" />
+            </path>
+            <!-- Right Drop -->
+             <path d="M0 0 Q 5 -10 10 -15" stroke="#B3E5FC" stroke-width="1.5" stroke-linecap="round" opacity="0">
+                 <animate attributeName="d" values="M0 0 Q 2 -2 2 -2; M0 0 Q 5 -10 10 -15" dur="2s" repeatCount="indefinite" />
+                 <animate attributeName="opacity" values="1; 0" dur="2s" repeatCount="indefinite" />
+            </path>
+            <!-- Center Drop -->
+             <path d="M0 0 L 0 -15" stroke="#B3E5FC" stroke-width="1.5" stroke-linecap="round" opacity="0">
+                 <animate attributeName="d" values="M0 0 L 0 -2; M0 0 L 0 -15" dur="2s" repeatCount="indefinite" />
+                 <animate attributeName="opacity" values="1; 0" dur="2s" repeatCount="indefinite" />
+            </path>
+        </g>
+    </g>
+</svg>)whale_svg";
