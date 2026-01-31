@@ -80,6 +80,12 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
 
   ESP_LOGI(TAG, "Setting up Whale");
 
+  parent.style()
+      .bg_color(lvgl::Color::from_hex(0xE0F2FE))
+      .bg_opa(lvgl::Opacity::Cover)
+      .border_width(0)
+      .radius(0);
+
   const char* raw_svg_ptr = whale_svg;
   while (*raw_svg_ptr && *raw_svg_ptr != '<') raw_svg_ptr++;
 
@@ -138,6 +144,11 @@ void WorkshopUI::setup_hummingbird(lvgl::Object& parent) {
 
   ESP_LOGI(TAG, "Setting up Hummingbird");
 
+  parent.style()
+      .bg_color(lvgl::Color::from_hex(0xE0F2FE))
+      .bg_opa(lvgl::Opacity::Cover)
+      .border_width(0)
+      .radius(0);
   // SVG Pointer Logic:
   // We skip any leading metadata/whitespace in the header file to find
   // the actual XML start tag '<'.
@@ -160,6 +171,12 @@ void WorkshopUI::setup_raccoon(lvgl::Object& parent) {
   current_image_.reset();
 
   ESP_LOGI(TAG, "Setting up Raccoon");
+
+  parent.style()
+      .bg_color(lvgl::Color::from_hex(0xE0F2FE))
+      .bg_opa(lvgl::Opacity::Cover)
+      .border_width(0)
+      .radius(0);
 
   // Similar SVG pointer logic for the Raccoon.
   const char* raw_svg_ptr = raccoon_svg;

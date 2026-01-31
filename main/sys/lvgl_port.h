@@ -34,7 +34,7 @@ class LvglPort {
     uint16_t v_res = 240;
     uint32_t task_stack_size = 32768;  // Standard UI stack
     int task_priority = 5;             // High priority, but below system tasks
-    uint32_t tick_period_ms = 5;       // UI Heartbeat period
+    uint32_t tick_period_ms = 1;       // UI Heartbeat period
 
     // Optimization Knobs (Driven by workshop_config.h)
     // ---------------------------------------------

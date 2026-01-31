@@ -30,7 +30,9 @@ bool LvglPort::notify_flush_ready_trampoline(
  * tick_increment_trampoline: Heartbeat for LVGL. Moves animations and timers
  * forward.
  */
-void LvglPort::tick_increment_trampoline(void* arg) { lv_tick_inc(5); }
+void LvglPort::tick_increment_trampoline(void* arg) {
+  lv_tick_inc(static_cast<LvglPort*>(arg)->config_.tick_period_ms);
+}
 
 /**
  * task_trampoline: Entry point for the FreeRTOS rendering task.
@@ -180,6 +182,6 @@ void LvglPort::task_loop() {
       unlock();
     }
     // Safety delay to prevent task starvation.
-    vTaskDelay(pdMS_TO_TICKS(5));
+    vTaskDelay(pdMS_TO_TICKS(1 /*config_.tick_period_ms*/));
   }
 }
