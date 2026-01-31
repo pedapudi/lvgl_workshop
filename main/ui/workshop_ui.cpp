@@ -22,6 +22,7 @@ static const char* TAG = "WorkshopUI";
  * ----------------------------
  * This helper uses LVGL's internal cubic-bezier engine to perfectly match
  * the "keySplines" found in SVG specifications.
+ * TODO: Move this to lvgl_cpp natively as Animation::Path::CubicBezier.
  */
 static int32_t svg_bezier_path(const lv_anim_t* a, int32_t x1, int32_t y1,
                                int32_t x2, int32_t y2) {
@@ -90,9 +91,11 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
   while (*raw_svg_ptr && *raw_svg_ptr != '<') raw_svg_ptr++;
 
   // Whale is rendered at 150x150 pixels.
-  static lvgl::ImageDescriptor whale_dsc(150, 150, LV_COLOR_FORMAT_RAW,
-                                         (const uint8_t*)raw_svg_ptr,
-                                         strlen(raw_svg_ptr) + 1);
+  // Note: Using C macro LV_COLOR_FORMAT_RAW as it's currently missing from
+  // lvgl::ColorFormat.
+  static lvgl::ImageDescriptor whale_dsc(
+      150, 150, LV_COLOR_FORMAT_RAW,
+      reinterpret_cast<const uint8_t*>(raw_svg_ptr), strlen(raw_svg_ptr) + 1);
 
   current_image_ = std::make_unique<lvgl::Image>(parent);
   current_image_->set_src(whale_dsc).center();
@@ -157,9 +160,9 @@ void WorkshopUI::setup_hummingbird(lvgl::Object& parent) {
 
   // Image Descriptor:
   // ThorVG reads the SVG data from this static descriptor.
-  static lvgl::ImageDescriptor bird_dsc(75, 75, LV_COLOR_FORMAT_RAW,
-                                        (const uint8_t*)raw_svg_ptr,
-                                        strlen(raw_svg_ptr) + 1);
+  static lvgl::ImageDescriptor bird_dsc(
+      200, 200, LV_COLOR_FORMAT_RAW,
+      reinterpret_cast<const uint8_t*>(raw_svg_ptr), strlen(raw_svg_ptr) + 1);
 
   // Display the SVG using a standard LVGL Image object.
   current_image_ = std::make_unique<lvgl::Image>(parent);
@@ -183,11 +186,9 @@ void WorkshopUI::setup_raccoon(lvgl::Object& parent) {
   while (*raw_svg_ptr && *raw_svg_ptr != '<') raw_svg_ptr++;
 
   // Raccoon is rendered at 180x180 pixels.
-  // This size was carefully chosen to balance visual quality and
-  // rasterization speed on the ESP32-S3.
-  static lvgl::ImageDescriptor raccoon_dsc(180, 180, LV_COLOR_FORMAT_RAW,
-                                           (const uint8_t*)raw_svg_ptr,
-                                           strlen(raw_svg_ptr) + 1);
+  static lvgl::ImageDescriptor raccoon_dsc(
+      180, 180, LV_COLOR_FORMAT_RAW,
+      reinterpret_cast<const uint8_t*>(raw_svg_ptr), strlen(raw_svg_ptr) + 1);
 
   current_image_ = std::make_unique<lvgl::Image>(parent);
   current_image_->set_src(raccoon_dsc).center();

@@ -1,13 +1,13 @@
+#include <cstdint>
 #if defined(noreturn)
 #undef noreturn
 #endif
-
-#include "lvgl_port.h"
 
 #include <algorithm>
 
 #include "esp_lcd_panel_ops.h"
 #include "esp_log.h"
+#include "lvgl_port.h"
 
 static const char* TAG = "LvglPort";
 
@@ -69,9 +69,9 @@ void LvglPort::init(esp_lcd_panel_handle_t panel_handle,
 
   lv_init();
 
-  // 1. Create the LVGL display object
-  lv_display_t* raw_disp = lv_display_create(config_.h_res, config_.v_res);
-  display_ = std::make_unique<lvgl::Display>(raw_disp);
+  // 1. Create the LVGL display object using the idiomatic factory
+  display_ = std::make_unique<lvgl::Display>(
+      lvgl::Display::create(config_.h_res, config_.v_res));
   display_->set_color_format(LV_COLOR_FORMAT_RGB565);
 
   // 2. Buffer Size Calculation
@@ -175,13 +175,14 @@ bool LvglPort::lock(uint32_t timeout_ms) {
 void LvglPort::unlock() { xSemaphoreGiveRecursive(api_lock_); }
 
 void LvglPort::task_loop() {
+  int32_t time_till_next_ms = config_.tick_period_ms;
   while (true) {
     if (lock(-1)) {
       // The actual LVGL engine call. Rasterizes widgets into the draw buffer.
-      lv_timer_handler();
+      time_till_next_ms = lvgl::Timer::handler();
       unlock();
     }
     // Safety delay to prevent task starvation.
-    vTaskDelay(pdMS_TO_TICKS(config_.tick_period_ms));
+    vTaskDelay(pdMS_TO_TICKS(time_till_next_ms));
   }
 }
