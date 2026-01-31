@@ -1,0 +1,5 @@
+dependencies:
+  lvgl/lvgl: "^9.4"
+  espressif/esp_lvgl_port: "^2.0"
+  espressif/esp_lcd_gc9a01: "^1.1.0"
+

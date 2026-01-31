@@ -1,0 +1,87 @@
+<svg width="75" height="75" viewBox="0 0 75 75" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- 
+        Self-Contained Animated Hummingbird 
+        Animations are defined using SMIL <animateTransform> tags.
+    -->
+
+    <!-- Flower Group (Sways gently) -->
+    <g>
+        <!-- Animation: Rotate 0 -> 5 -> 0 degrees around pivot (10, 75) -->
+        <animateTransform 
+            attributeName="transform" 
+            type="rotate" 
+            values="0 10 75; 5 10 75; 0 10 75" 
+            dur="3s" 
+            repeatCount="indefinite" 
+            calcMode="spline" 
+            keyTimes="0;0.5;1" 
+            keySplines="0.42 0 0.58 1; 0.42 0 0.58 1"
+        />
+        
+        <path d="M0 75 Q 10 50 20 45" stroke="#48BB78" stroke-width="1.5" fill="none"/>
+        <!-- Petals -->
+        <circle cx="20" cy="45" r="4" fill="#F687B3" />
+        <circle cx="16" cy="42" r="3" fill="#ED64A6" />
+        <circle cx="24" cy="42" r="3" fill="#ED64A6" />
+        <circle cx="20" cy="38" r="3" fill="#F687B3" />
+        <circle cx="20" cy="45" r="1.5" fill="#F6E05E" />
+    </g>
+
+    <!-- Hummingbird Group (Hovers up and down) -->
+    <g>
+        <!-- Animation: Translate Y 0 -> 3 -> 0 -->
+        <animateTransform 
+            attributeName="transform" 
+            type="translate" 
+            values="0 0; 0 3; 0 0" 
+            dur="1.5s" 
+            repeatCount="indefinite" 
+            calcMode="spline" 
+            keyTimes="0;0.5;1" 
+            keySplines="0.42 0 0.58 1; 0.42 0 0.58 1" 
+        />
+
+        <!-- Back Wing (Darker) -->
+        <!-- Animation: Flap rotation around shoulder (48, 30) -->
+        <path d="M48 30 C 56 15, 66 10, 71 15 C 66 25, 56 32, 48 30 Z" fill="#2C7A7B" opacity="0.8">
+            <animateTransform 
+                attributeName="transform" 
+                type="rotate" 
+                values="10 48 30; -40 48 30; 10 48 30" 
+                dur="0.08s" 
+                begin="0.02s" 
+                repeatCount="indefinite" 
+            />
+        </path>
+
+        <!-- Tail -->
+        <path d="M55 45 L 65 55 L 70 50 Z" fill="#285E61" />
+
+        <!-- Body -->
+        <path d="M55 45 C 50 50, 40 45, 35 35 C 32 30, 32 25, 35 22 C 38 19, 45 20, 50 30 C 52 35, 55 40, 55 45 Z" fill="#38B2AC" />
+        
+        <!-- White Belly Patch -->
+        <path d="M40 38 Q 45 42 50 40 Q 48 45 42 45 Z" fill="#E6FFFA" opacity="0.5" />
+
+        <!-- Beak -->
+        <path d="M35 25 L 15 30 L 35 27 Z" fill="#1A202C" />
+
+        <!-- Eye -->
+        <g>
+            <circle cx="37" cy="26" r="1.5" fill="black" />
+            <circle cx="37.5" cy="25.5" r="0.5" fill="white" />
+        </g>
+
+        <!-- Front Wing (Lighter) -->
+        <!-- Animation: Flap rotation around shoulder (44, 32) -->
+        <path d="M44 32 C 51 10, 61 5, 68 10 C 64 20, 54 35, 44 32 Z" fill="#81E6D9" opacity="0.9">
+            <animateTransform 
+                attributeName="transform" 
+                type="rotate" 
+                values="0 44 32; -50 44 32; 0 44 32" 
+                dur="0.08s" 
+                repeatCount="indefinite" 
+            />
+        </path>
+    </g>
+</svg>

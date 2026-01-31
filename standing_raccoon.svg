@@ -1,0 +1,78 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                
+                <!-- Floor Shadow -->
+                <ellipse cx="100" cy="180" rx="40" ry="5" fill="black" opacity="0.2"></ellipse>
+
+                <!-- Tail (Behind Body) -->
+                <g class="tail">
+                    <path d="M100 140 Q 130 150 140 130 Q 150 110 135 100 Q 120 90 100 120" stroke="#718096" stroke-width="25" stroke-linecap="round" fill="none"></path>
+                    <!-- Stripes -->
+                    <path d="M110 125 Q 125 125 130 115" stroke="#2D3748" stroke-width="4" fill="none" opacity="0.8"></path>
+                    <path d="M115 132 Q 130 135 138 122" stroke="#2D3748" stroke-width="4" fill="none" opacity="0.8"></path>
+                    <path d="M120 138 Q 135 145 142 130" stroke="#2D3748" stroke-width="4" fill="none" opacity="0.8"></path>
+                </g>
+
+                <!-- Main Raccoon Group (Breathing Animation) -->
+                <g class="raccoon-group">
+                    
+                    <!-- Hind Legs (Planted) -->
+                    <ellipse cx="85" cy="170" rx="10" ry="6" fill="#4A5568"></ellipse> <!-- Left Foot -->
+                    <ellipse cx="115" cy="170" rx="10" ry="6" fill="#4A5568"></ellipse> <!-- Right Foot -->
+
+                    <!-- Body -->
+                    <ellipse cx="100" cy="140" rx="38" ry="35" fill="#A0AEC0"></ellipse>
+                    <!-- Belly Patch -->
+                    <ellipse cx="100" cy="140" rx="22" ry="25" fill="#E2E8F0" opacity="0.8"></ellipse>
+
+                    <!-- Head Group -->
+                    <g class="head">
+                        <!-- Ears (Rounded for cuteness) -->
+                        <path class="ear-left" d="M75 75 L 65 55 Q 75 50 85 65 Z" fill="#4A5568" stroke="#4A5568" stroke-width="4" stroke-linejoin="round"></path>
+                        <path class="ear-right" d="M125 75 L 135 55 Q 125 50 115 65 Z" fill="#4A5568" stroke="#4A5568" stroke-width="4" stroke-linejoin="round"></path>
+                        
+                        <!-- Main Head Shape -->
+                        <ellipse cx="100" cy="85" rx="42" ry="32" fill="#A0AEC0"></ellipse>
+                        
+                        <!-- White Fur Highlights (Cheeks) -->
+                        <path d="M62 90 Q 58 80 65 70 L 135 70 Q 142 80 138 90 Q 100 115 62 90 Z" fill="#E2E8F0"></path>
+
+                        <!-- Mask (Bandit Mask) -->
+                        <path d="M65 80 Q 80 95 100 85 Q 120 95 135 80 Q 135 70 120 70 Q 100 80 80 70 Q 65 70 65 80 Z" fill="#2D3748"></path>
+
+                        <!-- Eyes (Bigger, Lower, Shinier) -->
+                        <g class="eye-left">
+                            <circle cx="82" cy="85" r="5" fill="white"></circle>
+                            <circle cx="82" cy="85" r="3.5" fill="#1A202C"></circle>
+                            <circle cx="83.5" cy="83.5" r="1.2" fill="white"></circle> <!-- Glint -->
+                        </g>
+                        <g class="eye-right">
+                            <circle cx="118" cy="85" r="5" fill="white"></circle>
+                            <circle cx="118" cy="85" r="3.5" fill="#1A202C"></circle>
+                            <circle cx="119.5" cy="83.5" r="1.2" fill="white"></circle> <!-- Glint -->
+                        </g>
+
+                        <!-- Blush (New) -->
+                        <ellipse cx="68" cy="95" rx="5" ry="3" fill="#F687B3" opacity="0.6"></ellipse>
+                        <ellipse cx="132" cy="95" rx="5" ry="3" fill="#F687B3" opacity="0.6"></ellipse>
+
+                        <!-- Snout/Nose -->
+                        <ellipse cx="100" cy="95" rx="6" ry="4" fill="#2D3748"></ellipse>
+                        <circle cx="100" cy="93" r="1.5" fill="#718096" opacity="0.5"></circle> 
+                        
+                        <!-- Smile (New) -->
+                        <path d="M96 102 Q 100 105 104 102" stroke="#2D3748" stroke-width="1.5" stroke-linecap="round" fill="none"></path>
+                    </g>
+
+                    <!-- Front Paws (Dangling/Begging) -->
+                    <g class="arm left">
+                        <path d="M80 120 Q 75 130 90 130" stroke="#4A5568" stroke-width="8" stroke-linecap="round" fill="none"></path>
+                        <circle cx="90" cy="130" r="4" fill="#2D3748"></circle> <!-- Hand -->
+                    </g>
+                    <g class="arm right">
+                        <path d="M120 120 Q 125 130 110 130" stroke="#4A5568" stroke-width="8" stroke-linecap="round" fill="none"></path>
+                        <circle cx="110" cy="130" r="4" fill="#2D3748"></circle> <!-- Hand -->
+                    </g>
+
+                </g> <!-- End Raccoon Group -->
+
+            </svg>

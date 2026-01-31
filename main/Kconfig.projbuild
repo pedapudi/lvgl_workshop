@@ -1,0 +1,14 @@
+menu "Animation Workshop"
+
+    config WORKSHOP_PHASE
+        int "Workshop Optimization Phase (1-4)"
+        range 1 4
+        default 4
+        help
+            Select the optimization phase (1-4).
+            1: Baseline
+            2: 80MHz SPI
+            3: Double Buffering
+            4: Full Frame PSRAM
+
+endmenu
