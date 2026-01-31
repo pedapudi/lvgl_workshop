@@ -182,6 +182,6 @@ void LvglPort::task_loop() {
       unlock();
     }
     // Safety delay to prevent task starvation.
-    vTaskDelay(pdMS_TO_TICKS(1 /*config_.tick_period_ms*/));
+    vTaskDelay(pdMS_TO_TICKS(config_.tick_period_ms));
   }
 }
