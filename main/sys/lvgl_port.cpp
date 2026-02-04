@@ -123,7 +123,7 @@ void LvglPort::flush_cb(lvgl::Display& disp, const lv_area_t& area,
   // We must swap the Little-Endian bytes from the CPU for the Big-Endian LCD.
   // NOTE: Some panels require bitwise inversion (~), but the GC9A01 on the
   // Seeed XIAO Round Display uses standard logic. If your colors appear
-  // inverted (negative), do NOT use the ~ operator.
+  // inverted (negative), toggle inversion with the ~ operator.
   if (Workshop::USE_XTENSA_INTRINSICS) {
     while (len > 0) {
       *buf16 = __builtin_bswap16(*buf16);

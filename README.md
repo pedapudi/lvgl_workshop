@@ -35,10 +35,10 @@ You can choose your optimization level in two ways:
 ### 📊 The Phase Matrix
 | Phase | Bottleneck | Target FPS | Primary Learning |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | SPI Bus & CPU | ~7 FPS | Baseline implementation. CPU wait-loops on display I/O. |
-| **Phase 2** | Graphics Bus | ~12 FPS | Boosting SPI to 80MHz. Identifying the "Tiling Problem". |
-| **Phase 3** | Raster Pipeline | ~18 FPS | Double-buffering & DMA. Decoupling CPU from Display. |
-| **Phase 4** | Expert Tuning | ~26 FPS | Full-frame buffers in PSRAM & Xtensa SIMD Intrinsics. |
+| **Phase 1** | SPI Bus & CPU | ~9 FPS | Baseline implementation. CPU wait-loops on display I/O. |
+| **Phase 2** | Graphics Bus | ~15 FPS | Boosting SPI to 80MHz. Identifying the "Tiling Problem". |
+| **Phase 3** | Raster Pipeline | ~9 FPS (Regression!) | Double-buffering reduces tear but tiling overhead hurts FPS. |
+| **Phase 4** | Expert Tuning | ~25 FPS | Full-frame buffers in PSRAM & Xtensa SIMD Intrinsics. |
 | **Phase 5** | **Native** | **~30+ FPS** | **"Large Partial" Internal SRAM Buffering**: Bypassing PSRAM latency with SIMD. |
 
 ---

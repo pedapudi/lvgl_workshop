@@ -54,36 +54,34 @@ static constexpr int CPU_FREQ_MHZ = (WORKSHOP_PHASE >= 2) ? 240 : 160;
 static constexpr uint32_t SPI_BUS_SPEED =
     (WORKSHOP_PHASE >= 2) ? (80 * 1000 * 1000) : (20 * 1000 * 1000);
 
-// BUFFER STRATEGY:
-// FullFrame (Phase 1, 2, 4): Renders all 240 rows at once.
-// - Phase 1, 2: Internal SRAM (115KB).
-// - Phase 4: PSRAM (115KB).
-// PartialStrip (Phase 3, 5): Renders chunks to fit double-buffering in Internal
-// SRAM.
-static constexpr BufferMode BUFFER_MODE =
-    (WORKSHOP_PHASE == 3 || WORKSHOP_PHASE == 5) ? BufferMode::PartialStrip
-                                                 : BufferMode::FullFrame;
+// MEMORY STRATEGY:
+// Phase 4 uses the 8MB Octal PSRAM for massive distinct buffers.
+// All other phases rely on the fast internal SRAM (~320KB).
+static constexpr bool USE_PSRAM = (WORKSHOP_PHASE == 4);
 
-// RENDERING MODE:
-// Phase 1-2: Full refresh (Naive/Foundation - redraws everything).
-// Phase 3-5: Partial refresh (Optimized/Expert - redraws changed areas).
-static constexpr lvgl::Display::RenderMode LVGL_RENDER_MODE =
-    (WORKSHOP_PHASE <= 2) ? lvgl::Display::RenderMode::Full
-                          : lvgl::Display::RenderMode::Partial;
-
-// MEMORY ALLOCATION CAPABILITIES:
-// INTERNAL (Phase 1-3, 5): High speed but limited capacity (~320KB).
-// SPIRAM (Phase 4): Uses the 8MB Octal PSRAM. Slower than SRAM, but allows
-// for massive buffers.
 static constexpr uint32_t ALLOC_CAPS =
-    (WORKSHOP_PHASE == 4) ? (MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM)
-                          : (MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    USE_PSRAM ? (MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM)
+              : (MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
 
 // CONCURRENCY (DOUBLE BUFFERING):
-// Phase 3+ enables a second buffer. This allows the CPU to calculate the next
-// frame while the SPI controller is busy sending the current frame to the
-// screen via DMA.
+// Phase 3+ enables a second buffer to decouple render time from flush time.
 static constexpr bool USE_DOUBLE_BUFFERING = (WORKSHOP_PHASE >= 3);
+
+// RENDERING MODE:
+// Phase 1-2: Naive full refresh (redraws everything).
+// Phase 3+: Optimized partial refresh (redraws only changed areas).
+static constexpr lvgl::Display::RenderMode LVGL_RENDER_MODE =
+    (WORKSHOP_PHASE >= 3) ? lvgl::Display::RenderMode::Partial
+                          : lvgl::Display::RenderMode::Full;
+
+// BUFFER SIZING:
+// FullFrame: Used when we have massive RAM (Phase 4) or when we only have
+// one buffer (Phase 1-2) and it fits in SRAM.
+// PartialStrip: Used when we want double-buffering but are constrained by
+// Internal SRAM size (Phase 3, 5).
+static constexpr BufferMode BUFFER_MODE = (USE_PSRAM || !USE_DOUBLE_BUFFERING)
+                                              ? BufferMode::FullFrame
+                                              : BufferMode::PartialStrip;
 
 // TASK STACK DEPTH:
 // Vector graphics engines (ThorVG) use recursion for path parsing and

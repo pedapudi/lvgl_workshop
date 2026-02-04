@@ -102,7 +102,7 @@ esp_err_t Gc9a01::init() {
   // 4. BACKLIGHT CONTROL
   // --------------------
   // Simple GPIO-based backlight logic.
-  ESP_LOGI(TAG, "Initialize Backlight");
+  ESP_LOGI(TAG, "Initialize backlight");
   gpio_num_t bl_gpio = (gpio_num_t)config_.bl_io_num;
   gpio_reset_pin(bl_gpio);
   gpio_set_direction(bl_gpio, GPIO_MODE_OUTPUT);
