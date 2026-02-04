@@ -94,7 +94,7 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
   // Note: Using C macro LV_COLOR_FORMAT_RAW as it's currently missing from
   // lvgl::ColorFormat.
   static lvgl::ImageDescriptor whale_dsc(
-      150, 150, LV_COLOR_FORMAT_RAW,
+      150, 150, lvgl::ColorFormat::Raw,
       reinterpret_cast<const uint8_t*>(raw_svg_ptr), strlen(raw_svg_ptr) + 1);
 
   current_image_ = std::make_unique<lvgl::Image>(parent);
@@ -111,7 +111,7 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
       .set_values(6, -6)  // Slightly amplified for visual impact
       .set_duration(2000)
       .set_playback_duration(2000)
-      .set_repeat_count(LV_ANIM_REPEAT_INFINITE)
+      .set_repeat_count(lvgl::Animation::RepeatInfinite)
       .set_path_cb(
           static_cast<lvgl::Animation::PathCallback>([](const lv_anim_t* a) {
             // Curve: Ease-In-Out (0.45, 0, 0.55, 1)
@@ -128,7 +128,7 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
       .set_values(-80, 80)  // +/- 8.0 degrees
       .set_duration(1000)
       .set_playback_duration(1000)
-      .set_repeat_count(LV_ANIM_REPEAT_INFINITE)
+      .set_repeat_count(lvgl::Animation::RepeatInfinite)
       .set_path_cb(
           static_cast<lvgl::Animation::PathCallback>([](const lv_anim_t* a) {
             // Match the same smooth spline
@@ -161,7 +161,7 @@ void WorkshopUI::setup_hummingbird(lvgl::Object& parent) {
   // Image Descriptor:
   // ThorVG reads the SVG data from this static descriptor.
   static lvgl::ImageDescriptor bird_dsc(
-      200, 200, LV_COLOR_FORMAT_RAW,
+      200, 200, lvgl::ColorFormat::Raw,
       reinterpret_cast<const uint8_t*>(raw_svg_ptr), strlen(raw_svg_ptr) + 1);
 
   // Display the SVG using a standard LVGL Image object.
@@ -187,39 +187,24 @@ void WorkshopUI::setup_raccoon(lvgl::Object& parent) {
 
   // Raccoon is rendered at 180x180 pixels.
   static lvgl::ImageDescriptor raccoon_dsc(
-      180, 180, LV_COLOR_FORMAT_RAW,
+      180, 180, lvgl::ColorFormat::Raw,
       reinterpret_cast<const uint8_t*>(raw_svg_ptr), strlen(raw_svg_ptr) + 1);
 
   current_image_ = std::make_unique<lvgl::Image>(parent);
   current_image_->set_src(raccoon_dsc).center();
 
-  // RACCOON BREATHING & BLINKING:
+  // RACCOON BREATHING:
   // Combines scale-based breathing with a subtle position shift.
 
   lvgl::Animation breathe;
   breathe.set_var(*current_image_)
-      .set_values(140, 240)
-      .set_duration(4000)
-      .set_repeat_count(LV_ANIM_REPEAT_INFINITE)
-      .set_playback_duration(4000)
-      .set_path_cb(
-          static_cast<lvgl::Animation::PathCallback>([](const lv_anim_t* a) {
-            // Custom "Slow Breathing" curve: heavy ease-in-out
-            return svg_bezier_path(a, 680, 0, 340, 1024);
-          }))
+      .set_values(160, 200)
+      .set_duration(3000)
+      .set_repeat_count(lvgl::Animation::RepeatInfinite)
+      .set_playback_duration(3000)
+      .set_path_cb(lvgl::Animation::Path::EaseInOut())
       .set_exec_cb([](lvgl::Object& obj, int32_t val) {
         static_cast<lvgl::Image&>(obj).set_scale(val);
       })
-      .start();
-
-  // Subtle Bobbing to make it feel less static
-  lvgl::Animation bob;
-  bob.set_var(*current_image_)
-      .set_values(0, 4)
-      .set_duration(4000)
-      .set_playback_duration(4000)
-      .set_repeat_count(LV_ANIM_REPEAT_INFINITE)
-      .set_exec_cb(
-          [](lvgl::Object& obj, int32_t val) { obj.style().translate_y(val); })
       .start();
 }

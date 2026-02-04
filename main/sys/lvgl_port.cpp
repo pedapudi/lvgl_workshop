@@ -1,50 +1,14 @@
-#include <cstdint>
-#if defined(noreturn)
-#undef noreturn
-#endif
+#include "sys/lvgl_port.h"
 
-#include <algorithm>
+#include <cstdio>
 
+#include "display/drivers/esp32_spi.h"
+#include "esp_heap_caps.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_log.h"
-#include "lvgl_port.h"
-
-static const char* TAG = "LvglPort";
-
-/**
- * notify_flush_ready_trampoline: Called by the ESP-LCD driver when a DMA
- * transfer is complete. It tells LVGL that the buffer they just "flushed" is
- * now free to be used again for rendering.
- */
-bool LvglPort::notify_flush_ready_trampoline(
-    esp_lcd_panel_io_handle_t io_panel, esp_lcd_panel_io_event_data_t* edata,
-    void* user_ctx) {
-  LvglPort* instance = static_cast<LvglPort*>(user_ctx);
-  if (instance && instance->display_) {
-    instance->display_->flush_ready();
-  }
-  return false;
-}
-
-/**
- * tick_increment_trampoline: Heartbeat for LVGL. Moves animations and timers
- * forward.
- */
-void LvglPort::tick_increment_trampoline(void* arg) {
-  lv_tick_inc(static_cast<LvglPort*>(arg)->config_.tick_period_ms);
-}
-
-/**
- * task_trampoline: Entry point for the FreeRTOS rendering task.
- */
-void LvglPort::task_trampoline(void* arg) {
-  auto* instance = static_cast<LvglPort*>(arg);
-  instance->task_loop();
-}
+#include "workshop_config.h"
 
 LvglPort::LvglPort(const Config& config) : config_(config) {
-  // Use a recursive mutex so the same task can lock multiple times without
-  // deadlocking.
   api_lock_ = xSemaphoreCreateRecursiveMutex();
 }
 
@@ -59,110 +23,214 @@ LvglPort::~LvglPort() {
   if (api_lock_) {
     vSemaphoreDelete(api_lock_);
   }
-  if (draw_buffer_) heap_caps_free(draw_buffer_);
-  if (draw_buffer2_) heap_caps_free(draw_buffer2_);
+  if (draw_buf_) {
+    heap_caps_free(draw_buf_);
+  }
+  if (draw_buf2_) {
+    heap_caps_free(draw_buf2_);
+  }
 }
 
 void LvglPort::init(esp_lcd_panel_handle_t panel_handle,
                     esp_lcd_panel_io_handle_t io_handle) {
   panel_handle_ = panel_handle;
+  creator_task_ = xTaskGetCurrentTaskHandle();
 
   lv_init();
 
-  // 1. Create the LVGL display object using the idiomatic factory
-  display_ = std::make_unique<lvgl::Display>(
-      lvgl::Display::create(config_.h_res, config_.v_res));
-  display_->set_color_format(LV_COLOR_FORMAT_RGB565);
+  // 1. Initialize Display Driver
+  // --------------------------
+  if (Workshop::USE_NATIVE_DRIVER) {
+    // Phase 5: Native Driver (Double Buffered)
+    lvgl::Esp32Spi::Config display_cfg;
+    display_cfg.h_res = config_.h_res;
+    display_cfg.v_res = config_.v_res;
+    display_cfg.panel_handle = panel_handle;
+    display_cfg.io_handle = io_handle;
 
-  // 2. Buffer Size Calculation
-  // -------------------------
-  // In "Full-Frame" mode (Phase 1, 4), we allocate enough for the entire
-  // screen. In "Strip-mode" (Phase 2, 3), we only allocate 20 lines to save
-  // internal memory.
-  if (config_.full_frame) {
-    draw_buffer_sz_ = config_.h_res * config_.v_res * sizeof(uint16_t);
-    ESP_LOGI(TAG, "Full-Frame buffer enabled (%u bytes)",
-             (uint32_t)draw_buffer_sz_);
+    // Optimization: LVGL already handles byte-swapped output via
+    // CONFIG_LV_COLOR_16_SWAP. GC9A01 hardware inversion should be handled by
+    // the panel driver if needed. By setting these to false, we avoid a
+    // full-frame CPU pass over PSRAM.
+    display_cfg.swap_bytes = true;
+    display_cfg.invert_colors = false;
+    display_cfg.render_mode = Workshop::LVGL_RENDER_MODE;
+
+    display_driver_ = std::make_unique<lvgl::Esp32Spi>(display_cfg);
   } else {
-    draw_buffer_sz_ = config_.h_res * 20 * sizeof(uint16_t);
-    ESP_LOGI(TAG, "Strip-mode enabled (20 lines, %u bytes)",
-             (uint32_t)draw_buffer_sz_);
+    // Calculate buffer size based on Workshop mode
+    size_t buffer_lines =
+        (Workshop::BUFFER_MODE == Workshop::BufferMode::FullFrame)
+            ? config_.v_res
+            : 20;
+    draw_buf_size_ = config_.h_res * buffer_lines * sizeof(lv_color_t);
+
+    ESP_LOGI("LvglPort", "Allocating %zu bytes for display buffer 1 (%s)",
+             draw_buf_size_,
+             (Workshop::ALLOC_CAPS & MALLOC_CAP_SPIRAM) ? "PSRAM" : "Internal");
+    draw_buf_ = (uint8_t*)heap_caps_aligned_alloc(64, draw_buf_size_,
+                                                  Workshop::ALLOC_CAPS);
+
+    if (Workshop::USE_DOUBLE_BUFFERING) {
+      ESP_LOGI(
+          "LvglPort", "Allocating %zu bytes for display buffer 2 (%s)",
+          draw_buf_size_,
+          (Workshop::ALLOC_CAPS & MALLOC_CAP_SPIRAM) ? "PSRAM" : "Internal");
+      draw_buf2_ = (uint8_t*)heap_caps_aligned_alloc(64, draw_buf_size_,
+                                                     Workshop::ALLOC_CAPS);
+    }
+
+    if (!draw_buf_ || (Workshop::USE_DOUBLE_BUFFERING && !draw_buf2_)) {
+      ESP_LOGE("LvglPort", "Failed to allocate display buffer(s)! Free: %zu",
+               heap_caps_get_free_size(Workshop::ALLOC_CAPS));
+      return;
+    }
+
+    // Create Legacy Display Wrapper
+    display_ = std::make_unique<lvgl::Display>(
+        lvgl::Display::create(config_.h_res, config_.v_res));
+    // Use raw C API for callbacks to avoid C++ wrapper signature mismatches
+    lv_display_set_user_data(display_->raw(), this);
+    lv_display_set_flush_cb(display_->raw(), flush_cb_trampoline);
+
+    display_->set_buffers(draw_buf_, draw_buf2_, draw_buf_size_,
+                          Workshop::LVGL_RENDER_MODE);
+
+    // Register IO Callback for flush readiness
+    esp_lcd_panel_io_callbacks_t cbs = {
+        .on_color_trans_done = notify_flush_ready_trampoline,
+    };
+    esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, this);
   }
 
-  // 3. Memory Allocation
-  // --------------------
-  // We use heap_caps_malloc to specify WHERE the memory lives (Internal SRAM vs
-  // Octal PSRAM).
-  draw_buffer_ =
-      (uint8_t*)heap_caps_malloc(draw_buffer_sz_, config_.malloc_caps);
-
-  if (config_.double_buffered) {
-    // Phase 3+ uses a second buffer to allow simultaneous rendering and DMA
-    // flushing.
-    draw_buffer2_ =
-        (uint8_t*)heap_caps_malloc(draw_buffer_sz_, config_.malloc_caps);
-    ESP_LOGI(TAG, "Double buffering enabled");
-  }
-
-  if (!draw_buffer_) {
-    ESP_LOGE(TAG, "Critical memory allocation failure!");
-    return;
-  }
-
-  display_->set_buffers(draw_buffer_, draw_buffer2_, draw_buffer_sz_,
-                        config_.render_mode);
-
-  // 4. Flush Callback (The Rendering Pipeline)
-  // ------------------------------------------
-  display_->set_flush_cb(
-      [this](lvgl::Display* disp, const lv_area_t* area, uint8_t* px_map) {
-        uint32_t len = (area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1);
-        uint16_t* buf = reinterpret_cast<uint16_t*>(px_map);
-
-        if (this->config_.use_intrinsics) {
-          // PHASE 4: Single-cycle hardware instruction for byte-swapping.
-          for (uint32_t i = 0; i < len; i++) {
-            buf[i] = ~__builtin_bswap16(buf[i]);
-          }
-        } else {
-          // PHASES 1-3: Manual byte-masking (Pedagogical).
-          // Colors are inverted (~) to match the LCD panel logic.
-          for (uint32_t i = 0; i < len; i++) {
-            uint16_t color = buf[i];
-            buf[i] = ~((color << 8) | (color >> 8));
-          }
-        }
-
-        // Send the corrected bits to the LCD controller.
-        esp_lcd_panel_draw_bitmap(this->panel_handle_, area->x1, area->y1,
-                                  area->x2 + 1, area->y2 + 1, px_map);
-      });
-
-  // 5. Register LCD Event Callbacks
-  // Links the "DMA Finish" signal back to our LvglPort instance.
-  esp_lcd_panel_io_callbacks_t cbs = {
-      .on_color_trans_done = notify_flush_ready_trampoline,
-  };
-  esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, this);
-
-  // 6. System Timer (Heartbeat)
-  // Provides high-resolution periodic ticks for LVGL.
+  // 2. System Timer (Heartbeat)
   esp_timer_create_args_t periodic_timer_args = {};
   periodic_timer_args.callback = &tick_increment_trampoline;
   periodic_timer_args.arg = this;
   periodic_timer_args.name = "lvgl_tick";
 
-  esp_timer_create(&periodic_timer_args, &tick_timer_);
-  esp_timer_start_periodic(tick_timer_, config_.tick_period_ms * 1000);
+  ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &tick_timer_));
+  ESP_ERROR_CHECK(
+      esp_timer_start_periodic(tick_timer_, config_.tick_period_ms * 1000));
 
-  // 7. Rendering Task (The Main Loop)
-  // We pin this to Core 1 to separate UI calculation from background system
-  // logic.
-  xTaskCreatePinnedToCore(task_trampoline, "lvgl_task", config_.task_stack_size,
-                          this, config_.task_priority, &task_handle_, 1);
+  // 3. Rendering Task
+  ESP_LOGI("LvglPort",
+           "Creating rendering task (Stack: %" PRIu32 " bytes, Priority: %d)",
+           config_.task_stack_size, config_.task_priority);
 
-  // Initialize the modern C++ pointer input (Touch).
-  indev_ = std::make_unique<lvgl::PointerInput>(lvgl::PointerInput::create());
+  BaseType_t res;
+  if (config_.task_affinity == tskNO_AFFINITY) {
+    res = xTaskCreate(task_trampoline, "lvgl_task", config_.task_stack_size,
+                      this, config_.task_priority, &task_handle_);
+  } else {
+    res = xTaskCreatePinnedToCore(
+        task_trampoline, "lvgl_task", config_.task_stack_size, this,
+        config_.task_priority, &task_handle_, config_.task_affinity);
+  }
+
+  if (res != pdPASS) {
+    ESP_LOGE("LvglPort",
+             "Failed to create rendering task! Free Internal heap: %zu bytes",
+             heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    return;
+  }
+
+  // Synchronize startup: Wait for task to initialize
+  if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5000)) == 0) {
+    ESP_LOGE("LvglPort", "Task startup timeout!");
+  }
+
+  // 4. Initialize Input Device
+  auto ptr_input = lvgl::PointerInput::create();
+  lvgl::Display* target_disp =
+      display_driver_ ? display_driver_->display() : display_.get();
+  if (target_disp) {
+    lv_indev_set_disp(ptr_input.raw(), target_disp->raw());
+  }
+  indev_ = std::make_unique<lvgl::PointerInput>(std::move(ptr_input));
+}
+
+void LvglPort::task_loop() {
+  // Signal the creator task that we have started
+  if (creator_task_) {
+    ESP_LOGI("LvglPort", "Signaling task readiness to creator...");
+    xTaskNotifyGive(creator_task_);
+  }
+
+  ESP_LOGI("LvglPort", "Starting optimized task loop on Core %d",
+           xPortGetCoreID());
+  uint32_t wait_ms = 0;
+
+  while (true) {
+    if (lock(-1)) {
+      // The actual LVGL engine call. Rasterizes widgets into the draw buffer.
+      wait_ms = lvgl::Timer::handler();
+      unlock();
+    } else {
+      // Mutex lock failed - yield
+      wait_ms = 1;
+    }
+
+    if (wait_ms == 0x10000000) {  // LV_NO_TIMER_READY
+      wait_ms = 50;  // Sleep if nothing to do, but stay reasonably responsive
+    } else if (wait_ms > 50) {
+      wait_ms = 50;  // Cap max sleep to maintain responsiveness
+    } else if (wait_ms < 1) {
+      wait_ms = 1;  // Ensure we yield
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(wait_ms));
+  }
+}
+
+void LvglPort::flush_cb_trampoline(lv_display_t* disp, const lv_area_t* area,
+                                   uint8_t* px_map) {
+  auto* port = static_cast<LvglPort*>(lv_display_get_user_data(disp));
+  if (port && port->display_) {
+    port->flush_cb(*port->display_, *area, px_map);
+  }
+}
+
+void LvglPort::flush_cb(lvgl::Display& disp, const lv_area_t& area,
+                        uint8_t* px_map) {
+  uint32_t w = lv_area_get_width(&area);
+  uint32_t h = lv_area_get_height(&area);
+  uint32_t len = w * h;
+
+  uint16_t* buf16 = (uint16_t*)px_map;
+
+  // BYTE SWAPPING & COLOR CORRECTION:
+  // We must swap the Little-Endian bytes from the CPU for the Big-Endian LCD.
+  // NOTE: Some panels require bitwise inversion (~), but the GC9A01 on the
+  // Seeed XIAO Round Display uses standard logic. If your colors appear
+  // inverted (negative), do NOT use the ~ operator.
+  if (Workshop::USE_XTENSA_INTRINSICS) {
+    while (len > 0) {
+      *buf16 = __builtin_bswap16(*buf16);
+      buf16++;
+      len--;
+    }
+  } else {
+    while (len > 0) {
+      *buf16 = (uint16_t)((*buf16 >> 8) | (*buf16 << 8));
+      buf16++;
+      len--;
+    }
+  }
+
+  // Transmit to panel
+  esp_lcd_panel_draw_bitmap(panel_handle_, area.x1, area.y1, area.x2 + 1,
+                            area.y2 + 1, px_map);
+}
+
+bool LvglPort::notify_flush_ready_trampoline(
+    esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t* edata,
+    void* user_ctx) {
+  auto* port = static_cast<LvglPort*>(user_ctx);
+  if (port && port->display_) {
+    lv_display_flush_ready(port->display_->raw());
+  }
+  return false;
 }
 
 bool LvglPort::lock(uint32_t timeout_ms) {
@@ -174,15 +242,27 @@ bool LvglPort::lock(uint32_t timeout_ms) {
 
 void LvglPort::unlock() { xSemaphoreGiveRecursive(api_lock_); }
 
-void LvglPort::task_loop() {
-  int32_t time_till_next_ms = config_.tick_period_ms;
-  while (true) {
-    if (lock(-1)) {
-      // The actual LVGL engine call. Rasterizes widgets into the draw buffer.
-      time_till_next_ms = lvgl::Timer::handler();
-      unlock();
-    }
-    // Safety delay to prevent task starvation.
-    vTaskDelay(pdMS_TO_TICKS(time_till_next_ms));
+lvgl::Display* LvglPort::get_display() {
+  if (display_driver_ && display_driver_->display()) {
+    return display_driver_->display();
   }
+  return display_.get();
+}
+
+void LvglPort::set_rotation(lvgl::Display::Rotation rotation) {
+  lvgl::Display* target_disp = (display_driver_ && display_driver_->display())
+                                   ? display_driver_->display()
+                                   : display_.get();
+  if (target_disp) {
+    target_disp->set_rotation(rotation);
+  }
+}
+
+void LvglPort::tick_increment_trampoline(void* arg) {
+  lv_tick_inc(static_cast<LvglPort*>(arg)->config_.tick_period_ms);
+}
+
+void LvglPort::task_trampoline(void* arg) {
+  auto* instance = static_cast<LvglPort*>(arg);
+  instance->task_loop();
 }

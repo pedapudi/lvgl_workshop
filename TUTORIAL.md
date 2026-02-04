@@ -168,6 +168,44 @@ lvgl_config.task_stack_size = 65536;
 - **Compiler power**: Enable `CONFIG_COMPILER_OPTIMIZATION_PERF=y` and `CONFIG_COMPILER_OPTIMIZATION_LTO=y`. 
 
 **Result:** **26 FPS**. Smooth, high-fidelity SVG animation.
+ 
+### 🧠 Deep Dive: Explicit Hardware Intrinsics
+The most expensive part of the rendering pipeline is the **Flush Callback**. For every frame, we must swap the bytes of every pixel (Endianness correction) and invert colors (LCD panel requirement).
+
+Instead of a standard C math loop, Phase 4 uses:
+```cpp
+buf[i] = __builtin_bswap16(buf[i]);
+```
+*   **`__builtin_bswap16`**: This is a compiler intrinsic that tells the CPU to use a dedicated hardware instruction (`BE`) to swap bytes in a single clock cycle.
+*   **⚠️ The NOT Pitfall (`~`)**: You might see examples using `~__builtin_bswap16()`. This is used for "Active-Low" LCD panels that require bitwise inversion to display colors correctly. If your colors look like a "photo negative," remove the `~` operator.
+
+**Posterity Note:** During Phase 1 implementation, using the `~` inversion on standard GC9A01 panels often results in inverted colors. Always verify your panel's logic level before applying bitwise negation in the flush loop.
+
+---
+
+## 🎨 The Animation Engine: Bringing SVGs to Life
+
+Our UI doesn't just display static images; it reproduces high-fidelity motion from SVG specifications using `lvgl_cpp`.
+
+### The SVG-to-LVGL Bridge
+SVG animations often use "Cubic Bezier" curves (defined as `keySplines`) for fluid motion. LVGL has a built-in Bezier engine, but it's traditionally used for internal easing. We've exposed this logic to our UI to perfectly match the biological movement defined in the SVG assets:
+
+```cpp
+static int32_t svg_bezier_path(const lv_anim_t* a, int32_t x1, int32_t y1, int32_t x2, int32_t y2) {
+    // Maps time (0..duration) to curve progress (0..1024)
+    int32_t t = lv_map(a->act_time, 0, a->duration, 0, 1024);
+    int32_t step = lv_cubic_bezier(t, x1, y1, x2, y2);
+    // Interpolates current value based on curve progress
+    return a->start_value + ((step * range) >> 10);
+}
+```
+
+### Layered Motion (The Whale)
+The whale animation isn't one single movement. It’s a **composition of transformations**:
+1.  **Bobbing**: A vertical translation using a smooth ease-in-out curve.
+2.  **Tilting**: A rhythmic rotation (mapping 0.1 degree units in LVGL) using the same biological timing as the bobbing.
+
+By layering these simple `lvgl::Animation` objects, we create a feeling of weight and fluid movement that feels "alive" rather than mechanical.
 
 ### 🧪 Expert configuration deep dive: sdkconfig.defaults
 For high-performance animations, your `sdkconfig` is just as important as your code. Here is the breakdown of the settings used in this workshop:
@@ -185,13 +223,51 @@ For high-performance animations, your `sdkconfig` is just as important as your c
 
 ---
 
+---
+
+## Phase 5: Native architecture (The 30+ FPS standard)
+**Goal:** Professional-grade driver with "Large Partial" SRAM buffering and 32-bit SWAR bit-swapping.
+
+While **Phase 4** brute-forced performance using massive PSRAM buffers, it introduced latency due to external memory wait-states. **Phase 5** reaches the **30+ FPS milestone** by shifting to a "Mobile-Grade" architecture: using high-speed **Internal SRAM** buffers but making them large enough to minimize tiling overhead.
+
+### ⚡ The Strategy
+1.  **"Large Partial" Buffering**: We allocate **1/2 Screen buffers** (240x120) in Internal SRAM. This achieves the best of both worlds: higher bandwidth than PSRAM and only a 2x tiling multiplier (compared to 12x in Phase 3).
+2.  **32-bit SWAR Processing**: We implement **SIMD-within-a-Register (SWAR)** in the driver's flush logic. This allows us to swap and invert two pixels (32 bits) in the same time it previously took to do one pixel (16 bits) using standard intrinsics.
+3.  **Core Mobility**: By removing task pinning (`tskNO_AFFINITY`), we allow the FreeRTOS scheduler to saturate the S3's dual CPU cores—one core can handle the heavy ThorVG rasterization while the other services the high-frequency SPI DMA interrupts.
+
+### 💻 Implementation
+Phase 5 introduces the `Esp32Spi` native driver, which moves the buffer management and low-level optimization directly into the `lvgl_cpp` driver ecosystem.
+
+**The "SRAM vs PSRAM" Trade-off:**
+In Phase 5, we prefer two **57KB Internal SRAM** buffers over two **115KB PSRAM** buffers. Even though the "Full Frame" in PSRAM eliminates tiling entirely, the faster access speed of Internal RAM at 240MHz CPU speeds allows ThorVG to complete its 2-pass render faster than a 1-pass render in external memory.
+
+**32-bit SWAR Optimization (`esp32_spi.cpp`):**
+Instead of processing 16-bit pixels, we cast the buffer to `uint32_t` and use bitwise masks to swap two pixels at once:
+```cpp
+auto swap = [](uint32_t v) {
+  // Swaps bytes for TWO pixels simultaneously
+  return ((v & 0xFF00FF00) >> 8) | ((v & 0x00FF00FF) << 8);
+};
+```
+This loop is unrolled 8 times (processing 16 pixels per iteration), ensuring the CPU can feed the 80MHz SPI bus without stalling.
+
+### 🧠 Why "Native" is Professional
+In professional embedded projects, you want your graphics engine to be "blind" to the hardware. **Phase 5** enforces this by:
+- **Formal Linkage**: Locking the `esp_lcd` hardware handles to the `lv_display_t` object via `user_data`.
+- **Zero Middleware**: The `LvglPort` no longer manages memory or flushing; it simply passes the requirements to the `Esp32Spi` driver and starts the engine.
+
+**Result:** **30+ FPS**. Fluid, professional-grade animation that hits the absolute limits of the XIAO Round Display's SPI bus.
+
+---
+
 ## 📊 Final performance summary
-| Phase | Key Optimization | Target FPS | Real-world Check |
+| Phase | Key Optimization | Target FPS | Primary Learning |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | Baseline | 5-7 FPS | 160MHz CPU / 8KB Stack |
-| **Phase 2** | Clock Speeds | 10-12 FPS | 240MHz CPU / 80MHz SPI |
-| **Phase 3** | Parallelism | 15-18 FPS | Double Buffering / DMA |
-| **Phase 4** | **Hardware Intel** | **26 FPS** | **PSRAM / SIMD Intrinsics / LTO** |
+| **Phase 1** | Baseline | 7 FPS | SPI 20MHz / Full Refresh |
+| **Phase 2** | Foundation | 12 FPS | CPU 240MHz / SPI 80MHz |
+| **Phase 3** | Parallelism | 18 FPS | Double Buffering / DMA |
+| **Phase 4** | Expert Tuning | 26 FPS | PSRAM / Full-Frame Buffers |
+| **Phase 5** | **Native** | **30+ FPS** | **Internal SRAM / 32-bit SWAR** |
 
 ---
 

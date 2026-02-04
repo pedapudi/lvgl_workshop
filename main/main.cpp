@@ -31,9 +31,12 @@ extern "C" void app_main(void) {
            (Workshop::ALLOC_CAPS & MALLOC_CAP_SPIRAM) ? "PSRAM" : "SRAM");
 
   // POWER MANAGEMENT (CPU CLOCK SCALING)
-  // We programmatically set the CPU frequency based on the current Phase.
-  // Phase 1: 160MHz (Baseline)
-  // Phase 2+: 240MHz (Maximum performance)
+  // ------------------------------------
+  // Embedded graphics are CPU-intensive. To ensure smooth 30+ GPS rendering of
+  // complex SVGs, we dynamically scale the CPU frequency.
+  // Foundation Phases (1-3) run at 160MHz to save power.
+  // Expert Phases (4+) boost to 240MHz to handle the parallel overhead of DMA
+  // and color conversion without jitter.
   esp_pm_config_t pm_config = {
       .max_freq_mhz = Workshop::CPU_FREQ_MHZ,
       .min_freq_mhz = Workshop::CPU_FREQ_MHZ,
@@ -42,8 +45,10 @@ extern "C" void app_main(void) {
   ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
 
   // 1. Display Hardware
-  // Initialize the GC9A01 SPI display with the pinout for the XIAO Round
-  // Display shield.
+  // --------------------
+  // This Gc9a01 object manages the raw SPI communication. It doesn't know
+  // about "buttons" or "animations"—it only knows how to send raw pixel
+  // streams to the round LCD glass.
   Gc9a01::Config display_cfg = {
       .host = SPI2_HOST,
       .cs_io_num = 2,
@@ -56,11 +61,10 @@ extern "C" void app_main(void) {
       .h_res = 240,
       .v_res = 240,
   };
-  Gc9a01 display_hw(display_cfg);
-  display_hw.init();
+  auto display_hw = std::make_unique<Gc9a01>(display_cfg);
+  display_hw->init();
 
   // 2. Touch Hardware
-  // Initialize the CHSC6X I2C touch controller.
   Chsc6x::Config touch_cfg = {
       .i2c_port = I2C_NUM_0,
       .sda_io_num = 5,
@@ -73,41 +77,40 @@ extern "C" void app_main(void) {
       .mirror_x = true,
       .mirror_y = false,
   };
-  Chsc6x chsc6x(touch_cfg);
+  auto chsc6x = std::make_unique<Chsc6x>(touch_cfg);
   // Wait for the touch chip to finish its internal boot (approx 1s).
-  vTaskDelay(pdMS_TO_TICKS(500));
-  chsc6x.init();
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  chsc6x->init();
 
   // 3. LVGL Porting Layer
-  // This layer handles the "glue" between LVGL and the ESP32 (Memory, Tasks,
-  // Timers).
   LvglPort::Config lvgl_config;
-  lvgl_config.task_stack_size =
-      Workshop::LVGL_STACK_SIZE;                   // Increases in Phase 2+
-  lvgl_config.malloc_caps = Workshop::ALLOC_CAPS;  // Moves to PSRAM in Phase 4
-  lvgl_config.double_buffered = Workshop::USE_DOUBLE_BUFFERING;
-  lvgl_config.full_frame =
-      (Workshop::BUFFER_MODE == Workshop::BufferMode::FullFrame);
-  lvgl_config.use_intrinsics = Workshop::USE_XTENSA_INTRINSICS;
-  lvgl_config.render_mode = Workshop::LVGL_RENDER_MODE;
+  lvgl_config.h_res = 240;
+  lvgl_config.v_res = 240;
+  lvgl_config.task_stack_size = Workshop::LVGL_STACK_SIZE;
+  lvgl_config.task_priority = 5;
+  lvgl_config.task_affinity = Workshop::LVGL_TASK_CORE;
 
-  LvglPort lvgl_port(lvgl_config);
-  // Initialize the port with the low-level panel and IO handles from the
-  // display driver.
-  lvgl_port.init(display_hw.get_panel_handle(), display_hw.get_io_handle());
-  // Attach the touch driver to the LVGL pointer input.
-  lvgl_port.register_touch_driver(&chsc6x);
+  ESP_LOGI(TAG, "Initializing LVGL Port on Core %d", Workshop::LVGL_TASK_CORE);
+  auto lvgl_port = std::make_unique<LvglPort>(lvgl_config);
+  lvgl_port->init(display_hw->get_panel_handle(), display_hw->get_io_handle());
+
+  lvgl_port->register_touch_driver(chsc6x.get());
 
   // 4. UI Layer
-  // Initialize the high-level workshop UI using the modern C++ wrappers.
+  // -----------
+  // Now that the foundations (Display, Touch, Port) are ready, we build the
+  // visual world.
   static WorkshopUI ui;
-  // All LVGL API calls must be wrapped in a lock for thread safety with the
-  // lvgl_task.
-  if (lvgl_port.lock(-1)) {
-    if (auto* display = lvgl_port.get_display()) {
+
+  // CRITICAL: Since the LvglPort task is already running in the background,
+  // we MUST lock the mutex before creating or modifying any UI elements.
+  // Failing to do so would result in a race condition where the renderer
+  // attempts to draw an object that is only half-initialized.
+  if (lvgl_port->lock(-1)) {
+    if (auto* display = lvgl_port->get_display()) {
       ui.init(*display);
     }
-    lvgl_port.unlock();
+    lvgl_port->unlock();
   }
 
   // The main task remains running for system maintenance.

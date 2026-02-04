@@ -79,7 +79,7 @@ esp_err_t Gc9a01::init() {
   // Install the manufacturer-specific initialization sequence.
   ESP_LOGI(TAG, "Install GC9A01 panel driver");
   esp_lcd_panel_dev_config_t panel_config = {
-      .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+      .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
       .data_endian = LCD_RGB_DATA_ENDIAN_LITTLE,
       .bits_per_pixel = 16,
       .reset_gpio_num = GPIO_NUM_NC,
@@ -94,7 +94,7 @@ esp_err_t Gc9a01::init() {
   ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle_));
 
   // Custom display parameters for the Round Screen
-  ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle_, false));
+  ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle_, true));
   ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle_, true));
   ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle_, true));
   ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle_, true, true));

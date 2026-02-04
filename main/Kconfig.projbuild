@@ -1,14 +1,23 @@
 menu "Animation Workshop"
 
-    config WORKSHOP_PHASE
-        int "Workshop Optimization Phase (1-4)"
-        range 1 4
-        default 4
+    config USE_KCONFIG_PHASE
+        bool "Use Menuconfig Phase (Override workshop_config.h)"
+        default n
         help
-            Select the optimization phase (1-4).
-            1: Baseline
-            2: 80MHz SPI
-            3: Double Buffering
-            4: Full Frame PSRAM
+            If enabled, the WORKSHOP_PHASE will be taken from this menu.
+            If disabled, the manual #define in main/workshop_config.h will be used.
+
+    config WORKSHOP_PHASE
+        depends on USE_KCONFIG_PHASE
+        int "Workshop Optimization Phase (1-5)"
+        range 1 5
+        default 1
+        help
+            Select the optimization phase (1-5).
+            1: Baseline (160MHz CPU, 20MHz SPI)
+            2: Foundation (240MHz CPU, 80MHz SPI)
+            3: Parallelism (Double Buffering)
+            4: Expert (Full Frame PSRAM, SIMD)
+            5: Native (Native Driver, SWAR)
 
 endmenu

@@ -1,6 +1,9 @@
 #pragma once
 
+#include "display/display.h"
 #include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "lvgl.h"
 #include "sdkconfig.h"
 
@@ -15,16 +18,18 @@
 /**
  * WORKSHOP_PHASE: The central engine switch.
  * -----------------------------------------
- * This pulls the phase from Kconfig (int) or defaults to 4.
- * Phase 1: Naive (160MHz, Single Buffer, Internal RAM)
- * Phase 2: Foundation (240MHz, 80MHz SPI, High Stack)
- * Phase 3: Parallelism (Double Buffering)
- * Phase 4: Expert (Full-Frame PSRAM, SIMD Intrinsics)
+ * Manually set this value to switch between workshop phases.
+ *
+ * Phase 1: Defaults (160MHz, 8KB Stack, Naive Flush, 20MHz SPI)
+ * Phase 2: Foundation (240MHz, 64KB Stack, 80MHz SPI)
+ * Phase 3: Parallelism (Partial Double Buffering)
+ * Phase 4: Expert (Full-Frame PSRAM Double Buffering, SIMD Intrinsics)
+ * Phase 5: Native (Native Display Driver, SIMD SW_ASM Shim)
  */
-#ifdef CONFIG_WORKSHOP_PHASE
+#ifdef CONFIG_USE_KCONFIG_PHASE
 #define WORKSHOP_PHASE CONFIG_WORKSHOP_PHASE
 #else
-#define WORKSHOP_PHASE 4
+#define WORKSHOP_PHASE 5
 #endif
 
 namespace Workshop {
@@ -50,26 +55,28 @@ static constexpr uint32_t SPI_BUS_SPEED =
     (WORKSHOP_PHASE >= 2) ? (80 * 1000 * 1000) : (20 * 1000 * 1000);
 
 // BUFFER STRATEGY:
-// PartialStrip (Phase 1-3): Renders 20 rows at a time to fit in fast Internal
-// SRAM. FullFrame (Phase 4): Renders all 240 rows at once in PSRAM to eliminate
-// tiling overhead.
+// FullFrame (Phase 1, 2, 4): Renders all 240 rows at once.
+// - Phase 1, 2: Internal SRAM (115KB).
+// - Phase 4: PSRAM (115KB).
+// PartialStrip (Phase 3, 5): Renders chunks to fit double-buffering in Internal
+// SRAM.
 static constexpr BufferMode BUFFER_MODE =
-    (WORKSHOP_PHASE <= 2 || WORKSHOP_PHASE >= 4) ? BufferMode::FullFrame
-                                                 : BufferMode::PartialStrip;
+    (WORKSHOP_PHASE == 3 || WORKSHOP_PHASE == 5) ? BufferMode::PartialStrip
+                                                 : BufferMode::FullFrame;
 
 // RENDERING MODE:
 // Phase 1-2: Full refresh (Naive/Foundation - redraws everything).
-// Phase 3-4: Partial refresh (Optimized/Expert - redraws changed areas).
-static constexpr lv_display_render_mode_t LVGL_RENDER_MODE =
-    (WORKSHOP_PHASE <= 2) ? LV_DISPLAY_RENDER_MODE_FULL
-                          : LV_DISPLAY_RENDER_MODE_PARTIAL;
+// Phase 3-5: Partial refresh (Optimized/Expert - redraws changed areas).
+static constexpr lvgl::Display::RenderMode LVGL_RENDER_MODE =
+    (WORKSHOP_PHASE <= 2) ? lvgl::Display::RenderMode::Full
+                          : lvgl::Display::RenderMode::Partial;
 
 // MEMORY ALLOCATION CAPABILITIES:
-// INTERNAL (Phase 1-3): High speed but limited capacity (~320KB).
-// SPIRAM (Phase 4): Uses the 8MB Octal PSRAM. Slower than SRAM, but allows for
-// massive buffers.
+// INTERNAL (Phase 1-3, 5): High speed but limited capacity (~320KB).
+// SPIRAM (Phase 4): Uses the 8MB Octal PSRAM. Slower than SRAM, but allows
+// for massive buffers.
 static constexpr uint32_t ALLOC_CAPS =
-    (WORKSHOP_PHASE >= 4) ? (MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM)
+    (WORKSHOP_PHASE == 4) ? (MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM)
                           : (MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
 
 // CONCURRENCY (DOUBLE BUFFERING):
@@ -79,16 +86,31 @@ static constexpr uint32_t ALLOC_CAPS =
 static constexpr bool USE_DOUBLE_BUFFERING = (WORKSHOP_PHASE >= 3);
 
 // TASK STACK DEPTH:
-// Vector graphics engines (ThorVG) use recursion for path parsing and scaling.
-// 8KB (Phase 1) is standard, but will CRASH when scaling complex SVGs.
-// 64KB (Phase 2+) provides the headroom needed for complex animations.
+// Vector graphics engines (ThorVG) use recursion for path parsing and
+// scaling. 32KB (Phase 1) is recommended to prevent stack overflows during
+// complex SVG rendering. 64KB (Phase 2+) provides the headroom needed for
+// fluid animations.
 static constexpr uint32_t LVGL_STACK_SIZE =
-    (WORKSHOP_PHASE >= 2) ? 64 * 1024 : 8 * 1024;
+    (WORKSHOP_PHASE >= 2) ? 64 * 1024 : 32 * 1024;
 
 // COMPILER OPTIMIZATIONS (BYTE SWAPPING):
-// SIMD Intrinsics (Phase 4): Replaces manual loops with a single-cycle hardware
-// instruction
-// (`__builtin_bswap16`) to swap Little-Endian CPU bytes for the Big-Endian LCD.
+// SIMD Intrinsics (Phase 4+): Replaces manual loops with a single-cycle
+// hardware instruction
+// (`__builtin_bswap16`) to swap Little-Endian CPU bytes for the Big-Endian
+// LCD.
 static constexpr bool USE_XTENSA_INTRINSICS = (WORKSHOP_PHASE >= 4);
+
+// DRIVER STRATEGY:
+// Legacy (Phase 1-4): LvglPort manages buffers and manual flushing.
+// Native (Phase 5): Esp32SpiDisplay manages buffers and dedicated SPI/DMA
+// logic.
+static constexpr bool USE_NATIVE_DRIVER = (WORKSHOP_PHASE >= 5);
+
+// CORE AFFINITY:
+// Phase 1-4: Pin to Core 1.
+// Phase 5: No Affinity (Load Balancing) to isolate ThorVG and maximize
+// throughput.
+static constexpr BaseType_t LVGL_TASK_CORE =
+    (WORKSHOP_PHASE == 5) ? tskNO_AFFINITY : 1;
 
 }  // namespace Workshop
