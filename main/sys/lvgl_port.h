@@ -11,8 +11,11 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "lvgl.h"
+#include "lvgl_cpp/draw/draw_buf.h"
 #include "lvgl_cpp/indev/pointer_input.h"
-#include "lvgl_cpp/lvgl_cpp.h"
+#include "utility/portable/esp32/port.h"
+
+// ... (rest of includes)
 
 namespace lvgl {
 class Esp32Spi;
@@ -52,7 +55,7 @@ class LvglPort {
    * @param timeout_ms The timeout in milliseconds.
    * @return True if successful, false otherwise.
    */
-  bool lock(uint32_t timeout_ms);
+  bool lock(uint32_t timeout_ms = -1);
 
   /**
    * Unlock the LVGL API.
@@ -106,23 +109,14 @@ class LvglPort {
   static bool notify_flush_ready_trampoline(
       esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t* edata,
       void* user_ctx);
-  static void tick_increment_trampoline(void* arg);
-  static void task_trampoline(void* arg);
-
-  void task_loop();
 
   Config config_;
-  SemaphoreHandle_t api_lock_;
-  TaskHandle_t task_handle_ = nullptr;
-  TaskHandle_t creator_task_ = nullptr;
-  esp_timer_handle_t tick_timer_ = nullptr;
-
+  std::unique_ptr<lvgl::utility::Esp32Port> port_service_;
   esp_lcd_panel_handle_t panel_handle_ = nullptr;
 
   std::unique_ptr<lvgl::Esp32Spi> display_driver_;
   std::unique_ptr<lvgl::Display> display_;
-  uint8_t* draw_buf_ = nullptr;
-  uint8_t* draw_buf2_ = nullptr;
-  size_t draw_buf_size_ = 0;
+  lvgl::draw::DrawBuf draw_buf_;
+  lvgl::draw::DrawBuf draw_buf2_;
   std::unique_ptr<lvgl::PointerInput> indev_;
 };
