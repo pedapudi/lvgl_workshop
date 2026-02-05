@@ -3,7 +3,7 @@
 This project demonstrates high-performance SVG animations using **LVGL v9**, **ThorVG**, and **LVGL_CPP** on the **Seeed Studio XIAO ESP32S3** paired with the **Round Display (240x240)**.
 
 > [!IMPORTANT]
-> **Start here**: This repository is designed as a companion to the [Animation workshop tutorial](file:///home/sunil/git/esp32-playground/animation_workshop/TUTORIAL.md). The core value of this project is found within that guide, which walks you through five distinct phases of optimization.
+> **Start here**: This repository is designed as a companion to the [Animation workshop tutorial](TUTORIAL.md). The core value of this project is found within that guide, which walks you through five distinct phases of optimization.
 
 ## 🚀 Quick start
 
