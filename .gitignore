@@ -79,3 +79,6 @@ Desktop.ini
 *.suo       # Visual Studio Solution User Options
 *.sln.docstates # Visual Studio
 *.lock
+
+# VSCode
+.vscode/
