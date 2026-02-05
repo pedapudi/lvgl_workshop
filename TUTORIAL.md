@@ -15,12 +15,14 @@ This project leverages a powerful open-source stack designed for high-performanc
 
 ---
 
-## � Getting started
+## Getting started
 
 ### Prerequisites
-Before diving into code, ensure you have the following tools installed:
+Before diving into code, ensure you have a development ecosystem for working with ESP32. This tutorial assumes you have the following tools installed:
 *   [Visual Studio Code](https://code.visualstudio.com/)
 *   [Espressif IDF Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-extension)
+
+However, there is nothing in this project that prevents you from using other tools like [PlatformIO](https://platformio.org/) or the [ESP-IDF command-line interface](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/tools/idf-cli.html).
 
 ### Step 0: The "Hello World" check (crucial)
 If you are new to the ESP32 ecosystem with ESP-IDF, **do not skip this step**.
@@ -31,7 +33,7 @@ If you are new to the ESP32 ecosystem with ESP-IDF, **do not skip this step**.
 
 **Why?** This verifies that your toolchain, USB drivers, and hardware connection are fully functional before we introduce the complexity of a C++ graphics library.
 
-### Alternative: Quick start (clone the workshop)
+### Step 1a: Quick start (clone the workshop)
 If you prefer not to start from scratch, you can clone the full workshop repository, which comes pre-configured with all components and settings.
 
 ```bash
@@ -42,7 +44,7 @@ git submodule update --init --recursive
 
 If you choose this path, you can skip to **Step 3 (Configuration)** to verify your settings, or jump straight to building.
 
-### Step 1: Create a new project (From Scratch)
+### Step 1b: Create a new project (from scratch)
 If you want to build the project yourself:
 1.  Open `ESP-IDF: Show Examples Projects` again.
 2.  Choose `get-started` -> `sample_project`.
