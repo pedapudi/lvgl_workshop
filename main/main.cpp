@@ -106,11 +106,11 @@ extern "C" void app_main(void) {
   // we MUST lock the mutex before creating or modifying any UI elements.
   // Failing to do so would result in a race condition where the renderer
   // attempts to draw an object that is only half-initialized.
-  if (lvgl_port->lock(-1)) {
+  {
+    LvglPort::Lock guard(*lvgl_port);
     if (auto* display = lvgl_port->get_display()) {
       ui.init(*display);
     }
-    lvgl_port->unlock();
   }
 
   // The main task remains running for system maintenance.

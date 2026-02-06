@@ -89,7 +89,7 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
       .set_duration(2000)
       .set_playback_duration(2000)
       .set_repeat_count(lvgl::Animation::RepeatInfinite)
-      .set_path_cb(lvgl::Animation::Path::CubicBezier(461, 0, 563, 1024))
+      .set_path_cb(lvgl::Animation::Path::Bezier(461, 0, 563, 1024))
       .set_exec_cb(
           [](lvgl::Object& obj, int32_t val) { obj.style().translate_y(val); })
       .start();
@@ -102,7 +102,7 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
       .set_duration(1000)
       .set_playback_duration(1000)
       .set_repeat_count(lvgl::Animation::RepeatInfinite)
-      .set_path_cb(lvgl::Animation::Path::CubicBezier(461, 0, 563, 1024))
+      .set_path_cb(lvgl::Animation::Path::Bezier(461, 0, 563, 1024))
       .set_exec_cb([](lvgl::Object& obj, int32_t val) {
         static_cast<lvgl::Image&>(obj).set_rotation(val);
       })

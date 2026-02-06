@@ -63,6 +63,30 @@ class LvglPort {
   void unlock();
 
   /**
+   * @brief Execute a function with the LVGL API lock held.
+   * @param func Function or lambda to execute.
+   */
+  template <typename F>
+  void with_lock(F&& func) {
+    Lock guard(*this);
+    func();
+  }
+
+  /**
+   * @brief RAII helper for locking the LVGL API.
+   */
+  class Lock {
+   public:
+    explicit Lock(LvglPort& port) : port_(port) { port_.lock(); }
+    ~Lock() { port_.unlock(); }
+    Lock(const Lock&) = delete;
+    Lock& operator=(const Lock&) = delete;
+
+   private:
+    LvglPort& port_;
+  };
+
+  /**
    * Get the active LVGL display object.
    * @return A pointer to the display object.
    */
