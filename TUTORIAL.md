@@ -4,6 +4,21 @@ Welcome to the Animation Workshop! This tutorial will walk you through the proce
 
 In this workshop, you will implement an application that renders and animates three vector assets: a **Hummingbird**, a **Raccoon**, and a **Whale**. You'll learn how to handle complex SVG rendering on resource-constrained hardware by navigating through progressive optimization phases.
 
+<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: flex-start; margin: 20px 0;">
+  <div style="flex: 1; min-width: 200px; max-width: 300px;">
+    <img src="assets/hb_screen.jpg" style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Hummingbird">
+    <p style="text-align: center; font-weight: bold; margin-top: 8px;">Hummingbird</p>
+  </div>
+  <div style="flex: 1; min-width: 200px; max-width: 300px;">
+    <img src="assets/raccoon_screen.gif" style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Raccoon">
+    <p style="text-align: center; font-weight: bold; margin-top: 8px;">Raccoon</p>
+  </div>
+  <div style="flex: 1; min-width: 200px; max-width: 300px;">
+    <img src="assets/whale_screen.gif" style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Whale">
+    <p style="text-align: center; font-weight: bold; margin-top: 8px;">Whale</p>
+  </div>
+</div>
+
 The example code uses a [Seeed Studio XIAO ESP32-S3 Plus](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html) and a [XIAO Round Display](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html).
 
 ### 🌐 The ecosystem
