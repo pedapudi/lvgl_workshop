@@ -58,7 +58,6 @@ void WorkshopUI::next_animal() {
 void WorkshopUI::setup_whale(lvgl::Object& parent) {
   parent.clean();
   current_image_.reset();
-  arc_label_.reset();
 
   ESP_LOGI(TAG, "Setting up Whale");
 
@@ -114,7 +113,6 @@ void WorkshopUI::setup_hummingbird(lvgl::Object& parent) {
   // Clean up previous UI elements to free memory.
   parent.clean();
   current_image_.reset();
-  arc_label_.reset();
 
   ESP_LOGI(TAG, "Setting up Hummingbird");
 
@@ -143,7 +141,6 @@ void WorkshopUI::setup_hummingbird(lvgl::Object& parent) {
 void WorkshopUI::setup_raccoon(lvgl::Object& parent) {
   parent.clean();
   current_image_.reset();
-  arc_label_.reset();
 
   ESP_LOGI(TAG, "Setting up Raccoon");
 

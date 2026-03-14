@@ -25,5 +25,4 @@ class WorkshopUI {
   Animal current_animal_ = Animal::Hummingbird;
   std::unique_ptr<lvgl::Object> screen_;
   std::unique_ptr<lvgl::Image> current_image_;
-  std::unique_ptr<lvgl::ArcLabel> arc_label_;
 };
