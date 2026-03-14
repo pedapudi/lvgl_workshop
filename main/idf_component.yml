@@ -1,5 +1,5 @@
 dependencies:
-  lvgl/lvgl: "^9.4"
+  lvgl/lvgl: "^9.5"
   espressif/esp_lvgl_port: "^2.0"
   espressif/esp_lcd_gc9a01: "^2.0.1"
 
