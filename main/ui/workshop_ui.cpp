@@ -79,11 +79,6 @@ void WorkshopUI::setup_whale(lvgl::Object& parent) {
   current_image_ = std::make_unique<lvgl::Image>(parent);
   current_image_->set_src(whale_dsc).center();
 
-  arc_label_->style()
-      .text_color(lvgl::Color::from_hex(0x0F0F0F))
-      .text_font(LV_FONT_DEFAULT);
-
-  anim_arc_ = std::make_unique<lvgl::Animation>();
   // We interpret the SVG's <animateTransform> tags and map them to LVGL
   // objects.
 
